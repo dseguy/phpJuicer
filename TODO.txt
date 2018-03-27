@@ -1,0 +1,18 @@
++ Structure as classes
++ Make one callable tool
++ Add a build system
++ Add unit tests
++ Add documentation
++ collect all versions
+    + remove versions 
+    + support hash and versions list
++ export stat
++ export migration
++ Restore 
++ Suggest next simvers
++ report some fixes
++ PHP code builder as a spinoff ? 
+  + Build structures
+  + Include formatter Options
++ SEMVer recommendations
++ Sortie graphique
