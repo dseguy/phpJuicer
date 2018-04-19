@@ -32,11 +32,11 @@ By participating in this project and its community you agree to abide by those t
 
 ## Running
 
-First, run phpjuicer on the code 
+First, run phpjuicer on the code. It produces a 'destination.sqlite' file, that has to be reused in the next commands.
 
 `php phpjuicer extract <path to source> <destination>`
 
-Then, grab some stats, in CSV format
+Then, get some stats, in CSV format (no .sqlite in destination)
 
 `php phpjuicer stats <destination>`
 
