@@ -13,8 +13,11 @@ if (!isset($argv[1])) {
 } elseif ($argv[1] === 'stats') {
     $stats = new Phpjuicer\Stats($argv[2]);
     $stats->run();
-} elseif ($argv[1] === 'evolution') {
-    $evolution = new Phpjuicer\Evolution($argv[2]);
+} elseif ($argv[1] === 'diff') {
+    $evolution = new Phpjuicer\Diff($argv[2], $argv[3], $argv[4]);
+    $evolution->run();
+} elseif ($argv[1] === 'list') {
+    $evolution = new Phpjuicer\ListVersions($argv[2]);
     $evolution->run();
 } else {
     $version = new Phpjuicer\Version();

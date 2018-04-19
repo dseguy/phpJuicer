@@ -47,7 +47,7 @@ class Extractor {
             
                 try {
                     $ast = ast\parse_code($code, 50);
-                } catch (Throwable $e) {
+                } catch (\Throwable $e) {
                     print "Parse error in $file. Omitting\n";
                     continue; 
                 }
@@ -63,7 +63,7 @@ class Extractor {
         }
     }
 
-        function traverseAst($ast) {
+        function traverseAst(array $ast) {
             foreach($ast as $node) {
                 if ($node->kind === ast\AST_STMT_LIST) {
                     $this->traverseAst($node->children);
@@ -78,8 +78,20 @@ class Extractor {
                 } elseif ($node->kind === ast\AST_USE) {
                     $this->traverseUse($node);
                 } else {
-                    print 'Default : '.$node->kind.PHP_EOL;
+//                    print 'Default : '.$node->kind.PHP_EOL;
                 }
+            }
+        }
+
+        function traverseExpression($node) {
+            if ($node->kind === ast\AST_ARRAY) {
+                return $this->traverseArray($node);
+            } elseif ($node->kind === ast\AST_ARRAY_ELEM) {
+                return $this->traverseArrayElement($node);
+            } elseif ($node->kind === ast\AST_BINARY_OP) {
+                return $this->traverseBinaryOp($node);
+            } else {
+//                print 'Default Expression : '.$node->kind.PHP_EOL;
             }
         }
 
@@ -185,16 +197,17 @@ class Extractor {
                 } elseif ($stmt->kind === ast\AST_PROP_DECL) {
                     foreach($stmt->children as $declaration) {
                         $name = $declaration->children['name'];
-                        if (isset($declaration->children['value'])) {
-                           $value = $declaration->children['value'];
+                        if ($declaration->children['default'] === null) {
+                            $value = 'null';
+                        } elseif (is_object($declaration->children['default'])) {
+                            $value = "'something'";
                         } else {
-                            $value = '';
+                            $value = "'".$this->sqlite->escapeString($declaration->children['default'])."'";
                         }
                         $doccomment = $declaration->children['docComment'];
 
-                        $value = $this->sqlite->escapeString($value);
                         $doccomment = $this->sqlite->escapeString($doccomment);
-                        $this->sqlite->query("INSERT INTO properties VALUES (null, '$name', '$classId', '$modifier', '$value', '$doccomment')");
+                        $this->sqlite->query("INSERT INTO properties VALUES (null, '$name', '$classId', '$modifier', $value, '$doccomment')");
                     }
                 } else {
                     print 'STMT UNKNOWN ' .$stmt->kind.PHP_EOL;
@@ -224,12 +237,9 @@ class Extractor {
                 } else {
                     $typehint = '';
                 }
-                $value = $param->children['default'];
+                $value = $this->traverseElement($param->children['default']);
                 if ($value instanceof ast\Node) {
-                    $value = $value->children['name'];
-                }
-                if ($value instanceof ast\Node) {
-                    $value = $value->children['name'];
+                    $value = $value;
                 }
     
                 $this->sqlite->query("INSERT INTO argumentsFunctions VALUES (null, '$name', '$functionId', '$value', '$typehint')");
@@ -243,7 +253,6 @@ class Extractor {
                 $doccomment = $declaration->children['docComment'];
                 $this->sqlite->query("INSERT INTO constants VALUES (null, '$name','$value', '$doccomment', $this->namespaceId)");
             }
-
         }
 
         function traverseNamespace($node) {
@@ -259,6 +268,56 @@ class Extractor {
             if (isset($node->children['stmts']->children)) {
                 $this->traverseAst($node->children['stmts']->children);
             }
+        }
+
+        private function traverseArrayElement($node) {
+            return $this->traverseElement($node);
+        }
+
+        private function traverseElement($node) {
+            if ($node instanceof ast\Node) {
+                return $this->traverseExpression($node->children['value']);
+            } else {
+                return $node;
+            }
+        }
+        
+        private function traverseBinaryOp($node) {
+            $operators = array(
+                ast\flags\BINARY_BITWISE_OR     => '|',
+                ast\flags\BINARY_BITWISE_AND    => '&',
+                ast\flags\BINARY_BITWISE_XOR    => '^',
+                ast\flags\BINARY_CONCAT         => '.',
+                ast\flags\BINARY_ADD            => '+',
+                ast\flags\BINARY_SUB            => '-',
+                ast\flags\BINARY_MUL            => '*',
+                ast\flags\BINARY_DIV            => '/',
+                ast\flags\BINARY_MOD            => '%',
+                ast\flags\BINARY_POW            => '**',
+                ast\flags\BINARY_SHIFT_LEFT     => '<<',
+                ast\flags\BINARY_SHIFT_RIGHT    => '>>',
+         );
+            
+            return $this->traverseElement($node->children['left']) .
+                   ' '.$operators[$node->flags].' ' .
+                   $this->traverseElement($node->children['right']);
+        }        
+        
+        private function traverseArray($node) {
+            $args = array();
+            foreach($node->children as $child) {
+                $args[] = $this->traverseExpression($child);
+            }
+            
+            $return = implode(', ', $args);
+            
+            if ($node->flags === ast\flags\ARRAY_SYNTAX_SHORT) {
+                $return = '['.$return.']';
+            } else {
+                $return = 'array('.$return.')';
+            }
+            
+            return $return;
         }
 
         function traverseUse($node) {
@@ -352,7 +411,7 @@ class Extractor {
                 $this->sqlite->query('DROP TABLE IF EXISTS argumentsFunctions');
                 $this->sqlite->query('CREATE TABLE argumentsFunctions ( id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                                   name INTEGER,
-                                                                  methodId INTEGER REFERENCES functions(id) ON DELETE CASCADE,
+                                                                  functionId INTEGER REFERENCES functions(id) ON DELETE CASCADE,
                                                                   value INTEGER,
                                                                   typehint INTEGER
                                                          )');
@@ -380,7 +439,7 @@ class Extractor {
                                                          namespaceId INTEGER DEFAULT 1  REFERENCES namespaces(id) ON DELETE CASCADE
                                                          )');
         }
-
+        
         function getTypeHint($node) {
             if (isset($node->children['name'])) {
                 return $node->children['name'];

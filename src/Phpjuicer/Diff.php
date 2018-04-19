@@ -2,26 +2,48 @@
 
 namespace Phpjuicer;
 
-class Evolution {
+use Phpjuicer\Data;
+use Phpjuicer\Data\DiffData;
+use Phpjuicer\Diff\Md;
+use Phpjuicer\Diff\Text;
+use Phpjuicer\Diff\SimpleTable;
+
+class Diff {
     private $databaseName = '';
     private $sqlite = null;
+
+    private $version1 = null;
+    private $version2 = null;
     
-    public function __construct($databaseName) {
+    public function __construct($databaseName, $version1, $version2) {
         $this->databaseName = $databaseName;
+        $this->version1 = $version1;
+        $this->version2 = $version2;
     }
 
-    public function run() {
+    public function run($versions = array()) {
         $this->sqlite = new \Sqlite3($this->databaseName.'.sqlite');
-
-        $res = $this->sqlite->query("SELECT * FROM versions ORDER BY version");
-        while($row = $res->fetchArray(\SQLITE3_ASSOC)) {
-            $versions[] = $row;
+        $data = new Data($this->sqlite);
+        
+        $versions = $data->versions()->list();
+        
+        if (!in_array($this->version1, $versions)) {
+            print 'No such version as '.$this->version1.PHP_EOL;
+            die();
         }
 
-        $nb = count($versions) - 1;
-        for($i = 0; $i < $nb; ++$i) {
-            $this->displayDiff($versions[$i], $versions[$i + 1]);
+        if (!in_array($this->version2, $versions)) {
+            print 'No such version as '.$this->version2.PHP_EOL;
+            die();
         }
+        
+        $diffData = new DiffData($data);
+        $diffData->load($this->version2, $this->version1);
+//        $render = new Text($data);
+        $render = new Md();
+        $render->start();
+        $render->render($diffData, $this->version2, $this->version1);
+        $render->end();
     }
         
     function displayDiff($versionA, $versionB) {
@@ -113,37 +135,7 @@ SQL;
         print PHP_EOL.PHP_EOL;
     }
 
-    function displayNCR($A, $B, $type = '') {
-        if (empty($A) && empty($B)) {
-            $new = '';
-            $common = 0;
-            $removed = 0;
-        } else {
-            $diff = array_diff($B, $A);
-            if (empty($diff) ) {
-                $new = 0;
-            } else {
-                $new = count($diff);
-            }
-    
-            $diff = array_diff($A, $B);
-            if (empty($diff) ) {
-                $removed = 0;
-            } else {
-                $removed = -count($diff);
-            }
-    
-            $diff = array_intersect($A, $B);
-            if (empty($diff) ) {
-                $common = 0;
-            } else {
-                $common = count($diff);
-            }
-        }
 
-        echo sprintf("% -20s|% -9d|% -9d|% -9d|\n", $type, $new, $common, $removed);
-
-    }
 
     function getMethods($version) {
         // Method collection

@@ -2,6 +2,8 @@
 
 namespace Phpjuicer\Stats;
 
+use Phpjuicer\Data;
+
 class Csv {
     private $data = null;
     
@@ -10,24 +12,36 @@ class Csv {
     }
 
     public function render() {
-        $rows = array(array('Version', 'Namespaces', 'Classes', 'Interfaces', 'Traits', 'Class Constants', 'Properties', 'Methods', 'Functions', 'Constants'), );
+        $rows = array(array('Version', 
+                            'Namespaces', 
+                            'Classes', 
+                            'Interfaces', 
+                            'Traits', 
+                            'Functions', 
+                            'Constants',
+                            'Class Constants', 
+                            'Properties', 
+                            'Methods', 
+                            ), 
+                        );
 
-        foreach($this->data->versions()->run() as $version) {
-            $row   = array($version[tag]);
-            $row[] = $this->data->versions($version['id'])->namespaces()->count();
-            $row[] = $this->data->versions($version['id'])->classes()->count();
-            $row[] = $this->data->versions($version['id'])->interfaces()->count();
-            $row[] = $this->data->versions($version['id'])->traits()->count();
-            $row[] = $this->data->versions($version['id'])->class_constants()->count();
-            $row[] = $this->data->versions($version['id'])->properties()->count();
-            $row[] = $this->data->versions($version['id'])->methods()->count();
-            $row[] = $this->data->versions($version['id'])->functions()->count();
-            $row[] = $this->data->versions($version['id'])->constants()->count();
-            
+        foreach($this->data->versions()->list() as $version) {
+            $row   = array($version);
+            $row[] = $this->data->versions($version)->namespaces()->count()                              ;
+            $row[] = $this->data->versions($version)->namespaces()->classes()->count()                   ;
+            $row[] = $this->data->versions($version)->namespaces()->interfaces()->count()                ;
+            $row[] = $this->data->versions($version)->namespaces()->traits()->count()                    ;
+            $row[] = $this->data->versions($version)->namespaces()->constants()->count()                 ;
+            $row[] = $this->data->versions($version)->namespaces()->functions()->count()                 ;
+
+            $row[] = $this->data->versions($version)->namespaces()->classes()->class_constants()->count();
+            $row[] = $this->data->versions($version)->namespaces()->classes()->properties()->count()     ;
+            $row[] = $this->data->versions($version)->namespaces()->classes()->methods()->count()        ;
+
             $rows[] = $row;
         }
         
-        $rows = array_map(function($r) { return '"'.join('", "', $r).'"';}, $rows);
+        $rows = array_map(function($r) { return '"'.implode('", "', $r).'"';}, $rows);
         $rows = implode(PHP_EOL, $rows).PHP_EOL;
 
         print $rows;
