@@ -6,25 +6,41 @@ class InterfaceData extends Data {
     private $sqlite = null;
     private $details = null;
 
-    public $methods = array();
+    public $myMethods            = array();
+    public $myInterfaceConstants = array();
 
     public function __construct($sqlite, $details) {
         $this->sqlite = $sqlite;
         $this->details = $details;
         
-        /*
-        $res = $this->sqlite->query('SELECT * FROM namespaces WHERE versionId = '.$details['id']);
+        $this->myMethods            = new ListData();
+        $this->myInterfaceConstants = new ListData();
+
+        $res = $this->sqlite->query('SELECT * FROM methods WHERE citId = '.$details['id']);
         while($row = $res->fetchArray(\SQLITE3_ASSOC)) {
-            if ($row['type'] === 'class') {
-                $this->myClasses[$row['name']] = new ClassData($this->sqlite, $row);
-                $this->classes[] = $row['name'];
-            }
+            $this->myMethods[$row['name']] = new MethodData($this->sqlite, $row);
         }
-        */
+
+        $res = $this->sqlite->query('SELECT * FROM class_constants WHERE citId = '.$details['id']);
+        while($row = $res->fetchArray(\SQLITE3_ASSOC)) {
+            $this->myInterfaceConstants[$row['name']] = new ClassConstantData($this->sqlite, $row);
+        }
     }
     
     public function methods($name = null) {
-        return $this->get($this->myMethods, $name);
+        if ($name === null) {
+            return $this->myMethods;
+        } else {
+            return $this->myMethods[$name];
+        }
+    }
+
+    public function interface_constants($name = null) {
+        if ($name === null) {
+            return $this->myInterfaceConstants;
+        } else {
+            return $this->myInterfaceConstants[$name];
+        }
     }
 }
 ?>

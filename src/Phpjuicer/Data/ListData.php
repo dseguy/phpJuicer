@@ -32,9 +32,8 @@ class ListData extends Data implements \ArrayAccess {
                 }
             } elseif (is_array($res[0])) {
                 $return = array_merge( ...$res);
-                print_r($return);
             } else {
-                $return = $res;
+                $return = $res[0];
             }
 
         } else {

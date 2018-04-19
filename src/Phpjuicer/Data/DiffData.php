@@ -12,6 +12,11 @@ class DiffData {
     public $classconstants           = array();
     public $classconstantsvisibility = array();
     public $classconstantsvalue      = array();
+    
+    public $interfaceconstants           = array();
+    public $interfaceconstantsvalue      = array();
+    public $interfacemethod              = array();
+    
 
     public function __construct($data) {
         $this->data = $data;
@@ -64,8 +69,8 @@ class DiffData {
 
     public function classConstantsValue($namespace, $class, $const) {
         $value = array(
-                $this->data->versions($this->version1)->namespaces($namespace)->classes($class)->class_constants()->value(),
-                $this->data->versions($this->version2)->namespaces($namespace)->classes($class)->class_constants()->value(),
+                $this->data->versions($this->version1)->namespaces($namespace)->classes($class)->class_constants($const)->value(),
+                $this->data->versions($this->version2)->namespaces($namespace)->classes($class)->class_constants($const)->value(),
                 );
         if ($value[0] === $value[1]) {
             return [];
@@ -76,8 +81,8 @@ class DiffData {
 
     public function classConstantsVisibility($namespace, $class, $const) {
         $visibility = array(
-                $this->data->versions($this->version1)->namespaces($namespace)->classes($class)->class_constants()->visibility(),
-                $this->data->versions($this->version2)->namespaces($namespace)->classes($class)->class_constants()->visibility(),
+                $this->data->versions($this->version1)->namespaces($namespace)->classes($class)->class_constants($const)->visibility(),
+                $this->data->versions($this->version2)->namespaces($namespace)->classes($class)->class_constants($const)->visibility(),
                 );
         if ($visibility[0] === $visibility[1]) {
             return [];
@@ -101,14 +106,13 @@ class DiffData {
     }
 
     public function propertyValue($namespace, $class, $property) {
-        $value = array_merge(
+        $value = array(
                 $this->data->versions($this->version1)->namespaces($namespace)->classes($class)->properties($property)->value(),
                 $this->data->versions($this->version2)->namespaces($namespace)->classes($class)->properties($property)->value()
                 );
         if ($value[0] === $value[1]) {
             return [];
         } else {
-            print_R($value);
             return $value;
         }
     }
@@ -124,6 +128,35 @@ class DiffData {
             return $visibility;
         }
     }
+
+    public function interfaces($namespace, $what = 'all') {
+        if (!isset($this->interfaces[$namespace])) {
+            $interfaces1 = $this->data->versions($this->version1)->namespaces($namespace)->interfaces()->list();
+            $interfaces2 = $this->data->versions($this->version2)->namespaces($namespace)->interfaces()->list();
+
+            $this->interfaces[$namespace]['added']   = array_diff($interfaces1, $interfaces2) ?? [];
+            $this->interfaces[$namespace]['removed'] = array_diff($interfaces2, $interfaces1) ?? [];
+            $this->interfaces[$namespace]['updated'] = array_intersect($interfaces1, $interfaces2) ?? [];
+        }
+        
+        return $this->select($this->interfaces[$namespace], $what);
+    }
+
+    public function interfaceconstants($namespace, $interface, $what = 'all') {
+        $path = $namespace.'\\'.$interface;
+        if (!isset($this->interfaces[$path])) {
+            $interface_constant1 = $this->data->versions($this->version1)->namespaces($namespace)->interfaces($interface)->interface_constants()->list();
+            $interface_constant2 = $this->data->versions($this->version2)->namespaces($namespace)->interfaces($interface)->interface_constants()->list();
+
+            $this->interfaces[$path]['added']   = array_diff($interface_constant1, $interface_constant2) ?? [];
+            $this->interfaces[$path]['removed'] = array_diff($interface_constant2, $interface_constant1) ?? [];
+            $this->interfaces[$path]['updated'] = array_intersect($interface_constant1, $interface_constant2) ?? [];
+        }
+        
+        return $this->select($this->interfaces[$path], $what);
+    }
+
+
     private function select($array, $what) {
         switch($what) {
             case 'added' : 

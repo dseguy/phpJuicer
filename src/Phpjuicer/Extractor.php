@@ -40,7 +40,6 @@ class Extractor {
             
             $total = 0;
             foreach($files as $file) {
-                print $file.PHP_EOL;
                 ++$total;
                 if (preg_match('#/tests?/#i', $file)) { continue; }
                 $code = file_get_contents((string) $file);
@@ -48,15 +47,11 @@ class Extractor {
                 try {
                     $ast = ast\parse_code($code, 50);
                 } catch (\Throwable $e) {
-                    print "Parse error in $file. Omitting\n";
+                    print "parse_code() received ".get_class($e)." in $file. Omitting\n";
                     continue; 
                 }
         
                 $this->traverseAst($ast->children);
-                
-                if ($total == 2) {
-//                    die();
-                }
             }
 
             print "$version : $total files \n";
@@ -276,7 +271,11 @@ class Extractor {
 
         private function traverseElement($node) {
             if ($node instanceof ast\Node) {
-                return $this->traverseExpression($node->children['value']);
+                if (isset($node->children['value'])) {
+                    return $this->traverseExpression($node->children['value']);
+                } elseif (isset($node->children['value'])) {
+                    return $this->traverseExpression($node->children['name']);
+                }
             } else {
                 return $node;
             }

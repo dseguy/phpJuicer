@@ -62,9 +62,10 @@ MD;
             foreach($updated as $namespace) {
 
                 $classes = $this->renderClasses($namespace);
-                if (!empty($classes)) {
-                    $namespaceMd .= $classes; 
-                }
+                $namespaceMd .= $classes; 
+
+                $interfaces = $this->renderInterfaces($namespace);
+                $namespaceMd .= $interfaces; 
             }
 
             if (!empty($namespaceMd)) {
@@ -158,11 +159,11 @@ MD;
             foreach($updated as $cc) {
                 $visibility = $this->diff->classConstantsVisibility($namespace, $class, $cc);
                 if (!empty($visibility)) {
-                    $md .= '            + ' ."$cc : visiblity change from $visibility[0] to $visibility[1]".PHP_EOL;
+                    $md .= $this->ident()."+ $cc : visiblity change from $visibility[0] to $visibility[1]".PHP_EOL;
                 }
                 $value = $this->diff->classConstantsValue($namespace, $class, $cc);
                 if (!empty($value)) {
-                    $md .= '            + ' ."$cc : value change from $value[0] to $value[1]".PHP_EOL;
+                    $md .= $this->ident()."+ $cc : value change from $value[0] to $value[1]".PHP_EOL;
                 }
             }
         }
@@ -233,6 +234,100 @@ MD;
         return $md;
     }
 
+    private function renderInterfaces($namespace) {
+        $this->levelUp();
+
+        $all = $this->diff->interfaces($namespace, 'all');
+        
+        $md = '';
+    
+        $added = $this->diff->interfaces($namespace, 'added');
+        if (!empty($added)) {
+            $md .= $this->ident().'+ ' .count($added).' added interfaces '.PHP_EOL
+                        .$this->makeList($added).PHP_EOL;
+        }
+
+        $removed = $this->diff->interfaces($namespace, 'removed');
+        if (!empty($removed)) {
+            $md .= $this->ident().'+ ' .count($removed).' removed interfaces '.PHP_EOL
+                        .$this->makeList($removed).PHP_EOL;
+        }
+
+/*
+        $updated = $this->diff->interfaces($namespace, 'updated');
+        if (!empty($updated)) {
+            $md .= '        + ' .count($updated).' updated interfaces '.PHP_EOL
+                         .'            + `'.implode("`\n        + `", $updated).'`'.PHP_EOL; 
+        }
+*/
+
+        $updated = $this->diff->interfaces($namespace, 'updated');
+        if (!empty($updated)) {
+            foreach($updated as $interface) {
+
+                $interfaceMd = '';
+
+                $interfaceconstants = $this->renderInterfaceConstant($namespace, $interface);
+                $interfaceMd .= $interfaceconstants; 
+/*
+                $methods = $this->renderInterfaceMethods($namespace, $interface);
+                if (!empty($methods)) {
+                    $interfaceMd .= $methods; 
+                }
+*/
+                if (!empty($interfaceMd)) {
+                    $md .= $this->ident().'+ interface `'.$namespace.'\\'.$class.'`'.PHP_EOL;
+                    $md .= $interfaceMd; 
+                }
+            }
+        }
+
+        if (!empty($md)) {
+            $md = $this->ident().'+ '.count($all).' total interfaces '.PHP_EOL.$md;
+        }
+
+        $this->levelDown();
+        
+        return $md;
+    }
+
+    private function renderInterfaceConstant($namespace, $interface) {
+        $this->levelUp();
+
+        $all = $this->diff->interfaceconstants($namespace, $interface, 'all');
+        
+        $md = '';
+    
+        $added = $this->diff->interfaceconstants($namespace, $interface, 'added');
+        if (!empty($added)) {
+            $md .= '            + ' .count($added).' added interface constants '.PHP_EOL
+                         .implode("\n+ ", $added).PHP_EOL; 
+        }
+
+        $removed = $this->diff->interfaceconstants($namespace, $interface, 'removed');
+        if (!empty($removed)) {
+            $md .= '            + ' .count($removed).' removed interface constants '.PHP_EOL
+                         .implode("\n+ ", $removed).PHP_EOL; 
+        }
+
+        $updated = $this->diff->interfaceconstants($namespace, $interface, 'updated');
+        if (!empty($updated)) {
+            foreach($updated as $cc) {
+                $value = $this->diff->interfaceConstantsValue($namespace, $interface, $cc);
+                if (!empty($value)) {
+                    $md .= $this->ident()."+ $cc : value change from $value[0] to $value[1]".PHP_EOL;
+                }
+            }
+        }
+
+        if (!empty($md)) {
+            $md = '        + '.count($all).' total interface constants '.PHP_EOL.$md;
+        }
+
+        $this->levelDown();
+        
+        return $md;
+    }
 
 /*
 
